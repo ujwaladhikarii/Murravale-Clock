@@ -367,7 +367,7 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // CONFIGURATION — Edit these values before deploying
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-const SHEET_URL = "https://script.google.com/macros/s/AKfycbxAL_kv9tlHwnL1iQfVmfgoFlMpl_CF8WtUE4eCjA21gyLKCi-GZnPgONBKUoqTy3Mt/exec";
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbzkwsALl5LakoxwR8l-tL2sWVeI4RfuS1KLMd3JUds/exec";
 
 // Default admin password — staff will be managed inside the app
 // Change this after first login via the Settings tab
@@ -376,9 +376,9 @@ let ADMIN_PASSWORD = "murravale2024";
 // Pre-loaded staff — you can also add via the Admin > Staff tab
 // Format: { pin: "name" }
 let STAFF = {
-  "1001": "Ujwal Adhikari",
-  "1002": "Umah Chandaran",
-  "1003": "Grace Oyelakin",
+  "1001": "Staff Member 1",
+  "1002": "Staff Member 2",
+  "1003": "Staff Member 3",
 };
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -405,19 +405,18 @@ async function checkConnection() {
   const txt = document.getElementById("statusText");
   const aDot = document.getElementById("adminStatusDot");
   const aTxt = document.getElementById("adminStatusText");
-  if (!SHEET_URL || SHEET_URL === "https://script.google.com/macros/s/AKfycbxAL_kv9tlHwnL1iQfVmfgoFlMpl_CF8WtUE4eCjA21gyLKCi-GZnPgONBKUoqTy3Mt/exec") {
+  if (!SHEET_URL) {
     dot.className="dot off"; txt.textContent="Not connected to Google Sheets";
     if(aDot){aDot.className="dot off"; aTxt.textContent="Not connected — see setup guide";}
     return;
   }
   try {
-    const res = await fetch(SHEET_URL+"?ping=1");
-    const data = await res.json();
-    if(data.status==="ok"){
-      sheetReady=true;
-      dot.className="dot on"; txt.textContent="Connected to Google Sheets";
-      if(aDot){aDot.className="dot on"; aTxt.textContent="Connected to Google Sheets ✓";}
-    }
+    // Use no-cors since Apps Script doesn't return CORS headers on GET
+    await fetch(SHEET_URL+"?ping=1", {mode:"no-cors"});
+    // If fetch didn't throw, the endpoint is reachable
+    sheetReady=true;
+    dot.className="dot on"; txt.textContent="Connected to Google Sheets";
+    if(aDot){aDot.className="dot on"; aTxt.textContent="Connected to Google Sheets ✓";}
   } catch {
     dot.className="dot off"; txt.textContent="Sheet offline — saving locally";
     if(aDot){aDot.className="dot off"; aTxt.textContent="Cannot reach Google Sheets";}
@@ -464,7 +463,7 @@ async function handleClock(type) {
   btnIn.disabled=btnOut.disabled=true;
   if(type==="IN"){btnIn.innerHTML='<span class="spin"></span>Saving...';}
   else{btnOut.innerHTML='<span class="spin"></span>Saving...';}
-  if(sheetReady&&SHEET_URL!=="https://script.google.com/macros/s/AKfycbxAL_kv9tlHwnL1iQfVmfgoFlMpl_CF8WtUE4eCjA21gyLKCi-GZnPgONBKUoqTy3Mt/exec"){
+  if(sheetReady){
     try{
       await fetch(SHEET_URL,{method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({name,date:dateStr,time:timeStr,type}),mode:"no-cors"});
