@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Murravale"/>
+  <title>Murravale Staff Clock</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+    :root{
+      --eucalypt:#335435;--leaf:#6e8a6a;--mist:#efe1cb;--pollen:#e2ba75;
+      --charcoal:#35332d;--bg:#f0ebe0;--white:#ffffff;
+      --err:#871717;--err-bg:#fde8e8;--ok-bg:#d4edda;--ok-txt:#1e5c2e;
+      --border:#ddd5c3;--surface:#faf7f2;
+    }
+    html,body{height:100%;background:var(--bg);font-family:'Manrope',sans-serif;color:var(--charcoal);overflow-x:hidden;}
+
+    /* ── SCREENS ── */
+    .screen{display:none;flex-direction:column;align-items:center;padding:28px 16px 48px;min-height:100vh;}
+    .screen.active{display:flex;}
+
+    /* ── LOGO ── */
+    .logo-area{display:flex;align-items:center;gap:13px;margin-bottom:24px;cursor:pointer;user-select:none;}
+    .logo-icon{width:54px;height:54px;flex-shrink:0;}
+    .logo-text .brand{font-size:21px;font-weight:800;color:var(--eucalypt);line-height:1.1;letter-spacing:-.3px;}
+    .logo-text .sub{font-size:12px;font-weight:500;color:var(--leaf);letter-spacing:.4px;}
+
+    /* ── CARD ── */
+    .card{background:var(--white);border-radius:22px;padding:28px 28px 24px;width:100%;max-width:400px;border:1.5px solid var(--border);box-shadow:0 4px 20px rgba(51,84,53,.07);}
+
+    /* ── CLOCK ── */
+    .live-clock{text-align:center;margin-bottom:22px;}
+    .time-big{font-size:40px;font-weight:800;color:var(--eucalypt);letter-spacing:-1.5px;line-height:1;}
+    .date-small{font-size:13px;font-weight:500;color:var(--leaf);margin-top:5px;}
+    .divider{height:1px;background:var(--mist);margin-bottom:20px;}
+
+    /* ── STATUS ── */
+    .status-bar{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--leaf);font-weight:500;margin-bottom:10px;justify-content:flex-end;}
+    .dot{width:7px;height:7px;border-radius:50%;background:#ccc;}
+    .dot.on{background:#4caf6b;} .dot.off{background:var(--err);}
+
+    /* ── PIN ── */
+    .field-label{font-size:11px;font-weight:700;color:var(--leaf);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;}
+    .pin-display{width:100%;background:var(--surface);border:2px solid #e8dfc9;border-radius:12px;padding:14px 12px;font-size:30px;font-weight:800;letter-spacing:12px;text-align:center;color:var(--charcoal);margin-bottom:18px;min-height:62px;display:flex;align-items:center;justify-content:center;transition:border-color .2s;}
+    .pin-display.has-val{border-color:var(--eucalypt);background:#fff;}
+    .pin-ph{font-size:16px;color:#c4b89e;letter-spacing:6px;font-weight:600;}
+
+    /* ── NUMPAD ── */
+    .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+    .num-btn{background:var(--surface);border:1.5px solid #e8dfc9;border-radius:12px;font-family:'Manrope',sans-serif;font-size:22px;font-weight:700;color:var(--charcoal);padding:16px 0;cursor:pointer;transition:background .12s,transform .08s;user-select:none;touch-action:manipulation;}
+    .num-btn:hover{background:var(--mist);}
+    .num-btn:active{transform:scale(.93);background:var(--pollen);}
+    .num-btn.sp{font-size:13px;font-weight:700;color:var(--leaf);}
+
+    /* ── MESSAGES ── */
+    .msg{border-radius:10px;padding:11px 14px;font-size:13px;font-weight:600;text-align:center;margin-bottom:14px;display:none;line-height:1.4;}
+    .msg.ok{display:block;background:var(--ok-bg);color:var(--ok-txt);}
+    .msg.er{display:block;background:var(--err-bg);color:var(--err);}
+
+    /* ── ACTION BUTTONS ── */
+    .action-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+    .btn-in{background:var(--eucalypt);color:var(--mist);border:none;border-radius:13px;font-family:'Manrope',sans-serif;font-size:15px;font-weight:700;padding:17px 0;cursor:pointer;transition:background .15s,transform .08s;touch-action:manipulation;}
+    .btn-in:hover{background:#274229;} .btn-in:active{transform:scale(.96);}
+    .btn-out{background:var(--mist);color:var(--eucalypt);border:2px solid var(--eucalypt);border-radius:13px;font-family:'Manrope',sans-serif;font-size:15px;font-weight:700;padding:17px 0;cursor:pointer;transition:background .15s,transform .08s;touch-action:manipulation;}
+    .btn-out:hover{background:var(--pollen);} .btn-out:active{transform:scale(.96);}
+    .btn-in:disabled,.btn-out:disabled{opacity:.5;cursor:not-allowed;}
+
+    /* ── SECONDARY BUTTON ── */
+    .btn-sec{width:100%;background:transparent;border:1.5px solid var(--leaf);border-radius:10px;font-family:'Manrope',sans-serif;font-size:12px;font-weight:600;color:var(--leaf);padding:10px 0;cursor:pointer;letter-spacing:.3px;transition:background .15s,color .15s;touch-action:manipulation;}
+    .btn-sec:hover{background:var(--eucalypt);color:var(--mist);border-color:var(--eucalypt);}
+
+    /* ── LOG ── */
+    .log-section{width:100%;max-width:400px;margin-top:20px;}
+    .log-title{font-size:11px;font-weight:700;color:var(--leaf);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;padding-left:2px;}
+    .log-item{background:var(--white);border:1px solid #e5ddd0;border-radius:11px;padding:10px 14px;margin-bottom:7px;display:flex;justify-content:space-between;align-items:center;}
+    .log-name{font-size:13px;font-weight:700;color:var(--charcoal);}
+    .log-meta{font-size:11px;color:var(--leaf);font-weight:500;margin-top:2px;}
+    .log-badge{font-size:10px;font-weight:800;padding:4px 9px;border-radius:6px;letter-spacing:.5px;flex-shrink:0;}
+    .badge-in{background:var(--ok-bg);color:var(--ok-txt);}
+    .badge-out{background:#fff0dc;color:#7a3a00;}
+    .empty-log{font-size:12px;color:#b0a898;text-align:center;padding:14px 0;font-style:italic;}
+
+    /* ── SPINNER ── */
+    .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:6px;}
+    @keyframes sp{to{transform:rotate(360deg);}}
+
+    /* ══════════════════════════════════
+       ADMIN LOGIN OVERLAY
+    ══════════════════════════════════ */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:100;padding:16px;}
+    .overlay.show{display:flex;}
+    .login-card{background:var(--white);border-radius:20px;padding:32px 28px;width:100%;max-width:340px;border:1.5px solid var(--border);}
+    .login-title{font-size:18px;font-weight:800;color:var(--eucalypt);margin-bottom:4px;}
+    .login-sub{font-size:12px;color:var(--leaf);font-weight:500;margin-bottom:20px;}
+    .txt-input{width:100%;border:1.5px solid #e0d8c8;border-radius:10px;padding:12px 14px;font-family:'Manrope',sans-serif;font-size:15px;font-weight:600;color:var(--charcoal);background:var(--surface);outline:none;transition:border-color .2s;margin-bottom:12px;}
+    .txt-input:focus{border-color:var(--eucalypt);background:#fff;}
+    .btn-primary{width:100%;background:var(--eucalypt);color:var(--mist);border:none;border-radius:11px;font-family:'Manrope',sans-serif;font-size:15px;font-weight:700;padding:14px 0;cursor:pointer;margin-bottom:10px;touch-action:manipulation;}
+    .btn-primary:hover{background:#274229;}
+    .btn-cancel{width:100%;background:transparent;border:1.5px solid #ccc;border-radius:11px;font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;color:#999;padding:11px 0;cursor:pointer;touch-action:manipulation;}
+    .btn-cancel:hover{border-color:var(--err);color:var(--err);}
+
+    /* ══════════════════════════════════
+       ADMIN PANEL
+    ══════════════════════════════════ */
+    #adminScreen{background:var(--bg);}
+    .admin-header{width:100%;max-width:480px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+    .admin-title-row .admin-ttl{font-size:20px;font-weight:800;color:var(--eucalypt);}
+    .admin-title-row .admin-sub{font-size:12px;color:var(--leaf);font-weight:500;}
+    .btn-logout{background:transparent;border:1.5px solid var(--err);border-radius:9px;font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;color:var(--err);padding:8px 14px;cursor:pointer;touch-action:manipulation;}
+    .btn-logout:hover{background:var(--err);color:#fff;}
+
+    /* Tabs */
+    .tabs{display:flex;gap:6px;width:100%;max-width:480px;margin-bottom:18px;background:var(--white);border-radius:12px;padding:5px;border:1px solid var(--border);}
+    .tab{flex:1;padding:9px 0;border:none;background:transparent;border-radius:9px;font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;color:var(--leaf);cursor:pointer;transition:background .15s,color .15s;touch-action:manipulation;}
+    .tab.active{background:var(--eucalypt);color:var(--mist);}
+
+    /* Tab panels */
+    .tab-panel{display:none;width:100%;max-width:480px;}
+    .tab-panel.active{display:block;}
+
+    /* Admin card */
+    .a-card{background:var(--white);border-radius:16px;padding:20px;border:1.5px solid var(--border);margin-bottom:14px;}
+    .a-card-title{font-size:13px;font-weight:700;color:var(--eucalypt);margin-bottom:14px;letter-spacing:.2px;}
+
+    /* Staff list */
+    .staff-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0e8d8;}
+    .staff-item:last-child{border-bottom:none;}
+    .staff-info .s-name{font-size:14px;font-weight:700;color:var(--charcoal);}
+    .staff-info .s-pin{font-size:11px;color:var(--leaf);font-weight:600;margin-top:2px;}
+    .btn-remove{background:transparent;border:1.5px solid #f0d0d0;border-radius:8px;font-family:'Manrope',sans-serif;font-size:11px;font-weight:700;color:var(--err);padding:5px 10px;cursor:pointer;touch-action:manipulation;}
+    .btn-remove:hover{background:var(--err);color:#fff;border-color:var(--err);}
+
+    /* Add staff form */
+    .add-form{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;}
+    .add-form .full{grid-column:1/-1;}
+    .form-label{font-size:11px;font-weight:700;color:var(--leaf);letter-spacing:.8px;text-transform:uppercase;margin-bottom:5px;display:block;}
+    .btn-add{width:100%;background:var(--eucalypt);color:var(--mist);border:none;border-radius:10px;font-family:'Manrope',sans-serif;font-size:13px;font-weight:700;padding:12px 0;cursor:pointer;touch-action:manipulation;}
+    .btn-add:hover{background:#274229;}
+
+    /* Activity log */
+    .filter-row{display:flex;gap:8px;margin-bottom:14px;align-items:center;}
+    .date-input{flex:1;border:1.5px solid #e0d8c8;border-radius:9px;padding:9px 12px;font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;color:var(--charcoal);background:var(--surface);outline:none;}
+    .date-input:focus{border-color:var(--eucalypt);}
+    .btn-filter{background:var(--eucalypt);color:var(--mist);border:none;border-radius:9px;font-family:'Manrope',sans-serif;font-size:12px;font-weight:700;padding:9px 14px;cursor:pointer;touch-action:manipulation;white-space:nowrap;}
+    .btn-filter:hover{background:#274229;}
+
+    .admin-log-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0e8d8;}
+    .admin-log-item:last-child{border-bottom:none;}
+    .al-name{font-size:13px;font-weight:700;color:var(--charcoal);}
+    .al-meta{font-size:11px;color:var(--leaf);font-weight:500;margin-top:2px;}
+    .al-badge{font-size:10px;font-weight:800;padding:3px 8px;border-radius:6px;}
+
+    /* Password change */
+    .pw-form{display:flex;flex-direction:column;gap:10px;}
+
+    /* Summary stats */
+    .stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;}
+    .stat-box{background:var(--surface);border-radius:12px;padding:12px;text-align:center;border:1px solid #e8dfc9;}
+    .stat-num{font-size:24px;font-weight:800;color:var(--eucalypt);}
+    .stat-lbl{font-size:10px;font-weight:700;color:var(--leaf);text-transform:uppercase;letter-spacing:.5px;margin-top:3px;}
+
+    /* tap hint */
+    .tap-hint{font-size:10px;color:#bbb;text-align:center;margin-top:8px;font-style:italic;}
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     SCREEN 1 — STAFF CLOCK IN/OUT
+══════════════════════════════════════ -->
+<div class="screen active" id="staffScreen">
+  <div class="logo-area" id="logoTap" title="Admin access">
+    <svg class="logo-icon" viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="54" height="54" rx="13" fill="#335435"/>
+      <path d="M9 43 L27 13 L45 43 Z" fill="#efe1cb"/>
+      <path d="M15 43 L27 22 L45 43 Z" fill="#6e8a6a"/>
+      <path d="M9 43 L27 28 L34 37 L22 43 Z" fill="#4a6e4c"/>
+      <rect x="9" y="41" width="36" height="3" rx="1.5" fill="#335435"/>
+    </svg>
+    <div class="logo-text">
+      <div class="brand">Murravale</div>
+      <div class="sub">Retirement Home</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="live-clock">
+      <div class="time-big" id="liveTime">--:--:--</div>
+      <div class="date-small" id="liveDate">Loading...</div>
+    </div>
+    <div class="divider"></div>
+    <div class="status-bar">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">Checking connection...</span>
+    </div>
+    <div class="field-label">Employee ID / PIN</div>
+    <div class="pin-display" id="pinDisplay">
+      <span class="pin-ph" id="pinPh">● ● ● ●</span>
+      <span id="pinMask" style="display:none"></span>
+    </div>
+    <div class="numpad">
+      <button class="num-btn" ontouchstart="" onclick="addDigit('1')">1</button>
+      <button class="num-btn" ontouchstart="" onclick="addDigit('2')">2</button>
+      <button class="num-btn" ontouchstart="" onclick="addDigit('3')">3</button>
+      <button class="num-btn" ontouchstart="" onclick="addDigit('4')">4</button>
+      <button class="num-btn" ontouchstart="" onclick="addDigit('5')">5</button>
+      <button class="num-btn" ontouchstart="" onclick="addDigit('6')">6</button>
+      <button class="num-btn" ontouchstart="" onclick="addDigit('7')">7</button>
+      <button class="num-btn" ontouchstart="" onclick="addDigit('8')">8</button>
+      <button class="num-btn" ontouchstart="" onclick="addDigit('9')">9</button>
+      <button class="num-btn sp" ontouchstart="" onclick="clearPin()">CLR</button>
+      <button class="num-btn" ontouchstart="" onclick="addDigit('0')">0</button>
+      <button class="num-btn sp" ontouchstart="" onclick="delDigit()">⌫</button>
+    </div>
+    <div class="msg" id="staffMsg"></div>
+    <div class="action-row">
+      <button class="btn-in"  id="btnIn"  onclick="handleClock('IN')">Clock In</button>
+      <button class="btn-out" id="btnOut" onclick="handleClock('OUT')">Clock Out</button>
+    </div>
+    <button class="btn-sec" onclick="downloadCSV()">⬇ Download attendance as CSV</button>
+  </div>
+
+  <div class="log-section">
+    <div class="log-title">Today's Activity</div>
+    <div id="logList"><div class="empty-log">No activity yet today</div></div>
+  </div>
+  <div class="tap-hint">Tap logo 5× for admin access</div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     ADMIN LOGIN OVERLAY
+══════════════════════════════════════ -->
+<div class="overlay" id="loginOverlay">
+  <div class="login-card">
+    <div class="login-title">Admin Login</div>
+    <div class="login-sub">Enter admin password to continue</div>
+    <div class="msg" id="loginMsg"></div>
+    <input class="txt-input" type="password" id="adminPwInput" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <button class="btn-primary" onclick="doLogin()">Login</button>
+    <button class="btn-cancel" onclick="closeLogin()">Cancel</button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════
+     SCREEN 2 — ADMIN PANEL
+══════════════════════════════════════ -->
+<div class="screen" id="adminScreen">
+
+  <div class="admin-header">
+    <div class="admin-title-row">
+      <div class="admin-ttl">Admin Panel</div>
+      <div class="admin-sub">Murravale Retirement Home</div>
+    </div>
+    <button class="btn-logout" onclick="doLogout()">Logout</button>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('activity')">Activity</button>
+    <button class="tab"        onclick="switchTab('staff')">Staff</button>
+    <button class="tab"        onclick="switchTab('settings')">Settings</button>
+  </div>
+
+  <!-- ── TAB: ACTIVITY ── -->
+  <div class="tab-panel active" id="tab-activity">
+    <div class="stats-row" id="statsRow">
+      <div class="stat-box"><div class="stat-num" id="statTotal">0</div><div class="stat-lbl">Records</div></div>
+      <div class="stat-box"><div class="stat-num" id="statIn">0</div><div class="stat-lbl">Clock Ins</div></div>
+      <div class="stat-box"><div class="stat-num" id="statOut">0</div><div class="stat-lbl">Clock Outs</div></div>
+    </div>
+
+    <div class="a-card">
+      <div class="a-card-title">Filter & Download</div>
+      <div class="filter-row">
+        <input class="date-input" type="date" id="filterDate"/>
+        <button class="btn-filter" onclick="filterActivity()">Filter</button>
+        <button class="btn-filter" style="background:var(--leaf);" onclick="showAllActivity()">All</button>
+      </div>
+      <button class="btn-sec" style="margin-bottom:0" onclick="downloadAdminCSV()">⬇ Download filtered records as CSV</button>
+    </div>
+
+    <div class="a-card" style="padding-bottom:8px;">
+      <div class="a-card-title">Attendance Log</div>
+      <div id="adminLogList"><div class="empty-log">No records yet</div></div>
+    </div>
+  </div>
+
+  <!-- ── TAB: STAFF ── -->
+  <div class="tab-panel" id="tab-staff">
+    <div class="a-card">
+      <div class="a-card-title">Add New Staff Member</div>
+      <div class="add-form">
+        <div>
+          <label class="form-label">Full Name</label>
+          <input class="txt-input" style="margin-bottom:0" type="text" id="newName" placeholder="e.g. Jane Smith"/>
+        </div>
+        <div>
+          <label class="form-label">PIN (3–6 digits)</label>
+          <input class="txt-input" style="margin-bottom:0" type="number" id="newPin" placeholder="e.g. 1007" maxlength="6"/>
+        </div>
+        <div class="full">
+          <div class="msg" id="staffFormMsg"></div>
+          <button class="btn-add" onclick="addStaff()">+ Add Staff Member</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="a-card" style="padding-bottom:8px;">
+      <div class="a-card-title">Current Staff (<span id="staffCount">0</span>)</div>
+      <div id="staffList"><div class="empty-log">No staff added yet</div></div>
+    </div>
+  </div>
+
+  <!-- ── TAB: SETTINGS ── -->
+  <div class="tab-panel" id="tab-settings">
+    <div class="a-card">
+      <div class="a-card-title">Change Admin Password</div>
+      <div class="pw-form">
+        <div>
+          <label class="form-label">Current Password</label>
+          <input class="txt-input" style="margin-bottom:0" type="password" id="pwCurrent" placeholder="Current password"/>
+        </div>
+        <div>
+          <label class="form-label">New Password</label>
+          <input class="txt-input" style="margin-bottom:0" type="password" id="pwNew" placeholder="New password (min 4 chars)"/>
+        </div>
+        <div>
+          <label class="form-label">Confirm New Password</label>
+          <input class="txt-input" style="margin-bottom:0" type="password" id="pwConfirm" placeholder="Repeat new password"/>
+        </div>
+        <div class="msg" id="pwMsg"></div>
+        <button class="btn-add" onclick="changePassword()">Update Password</button>
+      </div>
+    </div>
+
+    <div class="a-card">
+      <div class="a-card-title">Google Sheets Connection</div>
+      <div class="status-bar" style="justify-content:flex-start;margin-bottom:12px;">
+        <div class="dot" id="adminStatusDot"></div>
+        <span id="adminStatusText">Checking...</span>
+      </div>
+      <div style="font-size:12px;color:var(--leaf);line-height:1.7;">
+        To update the Google Sheets URL, open <strong>index.html</strong> in a text editor and update the <code>SHEET_URL</code> variable, then re-upload to GitHub.
+      </div>
+    </div>
+
+    <div class="a-card">
+      <div class="a-card-title">App Information</div>
+      <div style="font-size:12px;color:var(--leaf);line-height:1.8;">
+        <div>App: <strong style="color:var(--charcoal)">Murravale Staff Clock</strong></div>
+        <div>Facility: <strong style="color:var(--charcoal)">Murravale Retirement Home</strong></div>
+        <div>Version: <strong style="color:var(--charcoal)">2.0</strong></div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end adminScreen -->
+
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CONFIGURATION — Edit these values before deploying
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbxAL_kv9tlHwnL1iQfVmfgoFlMpl_CF8WtUE4eCjA21gyLKCi-GZnPgONBKUoqTy3Mt/exec";
+
+// Default admin password — staff will be managed inside the app
+// Change this after first login via the Settings tab
+let ADMIN_PASSWORD = "murravale2024";
+
+// Pre-loaded staff — you can also add via the Admin > Staff tab
+// Format: { pin: "name" }
+let STAFF = {
+  "1001": "Ujwal Adhikari",
+  "1002": "Umah Chandaran",
+  "1003": "Grace Oyelakin",
+};
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// State
+let pin = "";
+let records = [];
+let filteredRecords = [];
+let sheetReady = false;
+let tapCount = 0;
+let tapTimer = null;
+let activeTab = "activity";
+
+// ── CLOCK ──
+function tick() {
+  const now = new Date();
+  document.getElementById("liveTime").textContent = now.toLocaleTimeString("en-AU",{hour12:false});
+  document.getElementById("liveDate").textContent = now.toLocaleDateString("en-AU",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+}
+setInterval(tick, 1000); tick();
+
+// ── SHEET CONNECTION ──
+async function checkConnection() {
+  const dot = document.getElementById("statusDot");
+  const txt = document.getElementById("statusText");
+  const aDot = document.getElementById("adminStatusDot");
+  const aTxt = document.getElementById("adminStatusText");
+  if (!SHEET_URL || SHEET_URL === "https://script.google.com/macros/s/AKfycbxAL_kv9tlHwnL1iQfVmfgoFlMpl_CF8WtUE4eCjA21gyLKCi-GZnPgONBKUoqTy3Mt/exec") {
+    dot.className="dot off"; txt.textContent="Not connected to Google Sheets";
+    if(aDot){aDot.className="dot off"; aTxt.textContent="Not connected — see setup guide";}
+    return;
+  }
+  try {
+    const res = await fetch(SHEET_URL+"?ping=1");
+    const data = await res.json();
+    if(data.status==="ok"){
+      sheetReady=true;
+      dot.className="dot on"; txt.textContent="Connected to Google Sheets";
+      if(aDot){aDot.className="dot on"; aTxt.textContent="Connected to Google Sheets ✓";}
+    }
+  } catch {
+    dot.className="dot off"; txt.textContent="Sheet offline — saving locally";
+    if(aDot){aDot.className="dot off"; aTxt.textContent="Cannot reach Google Sheets";}
+  }
+}
+checkConnection();
+
+// ── PIN INPUT ──
+function updatePinDisplay() {
+  const mask=document.getElementById("pinMask");
+  const ph=document.getElementById("pinPh");
+  const disp=document.getElementById("pinDisplay");
+  if(pin.length>0){
+    mask.style.display="inline"; ph.style.display="none";
+    mask.textContent="●".repeat(pin.length);
+    disp.classList.add("has-val");
+  } else {
+    mask.style.display="none"; ph.style.display="inline";
+    disp.classList.remove("has-val");
+  }
+}
+function addDigit(d){if(pin.length<6){pin+=d;updatePinDisplay();clearStaffMsg();}}
+function delDigit(){pin=pin.slice(0,-1);updatePinDisplay();clearStaffMsg();}
+function clearPin(){pin="";updatePinDisplay();clearStaffMsg();}
+
+// ── MESSAGES ──
+function showMsg(id,text,type){
+  const b=document.getElementById(id);
+  b.textContent=text; b.className="msg "+type;
+  clearTimeout(b._t); b._t=setTimeout(()=>{b.className="msg";},5000);
+}
+function clearStaffMsg(){document.getElementById("staffMsg").className="msg";}
+
+// ── CLOCK IN/OUT ──
+async function handleClock(type) {
+  if(pin.length<3){showMsg("staffMsg","Please enter your Employee ID or PIN.","er");return;}
+  const name=STAFF[pin];
+  if(!name){showMsg("staffMsg","ID not recognised. Please check and try again.","er");clearPin();return;}
+  const now=new Date();
+  const dateStr=now.toLocaleDateString("en-AU");
+  const timeStr=now.toLocaleTimeString("en-AU",{hour12:false});
+  const btnIn=document.getElementById("btnIn");
+  const btnOut=document.getElementById("btnOut");
+  btnIn.disabled=btnOut.disabled=true;
+  if(type==="IN"){btnIn.innerHTML='<span class="spin"></span>Saving...';}
+  else{btnOut.innerHTML='<span class="spin"></span>Saving...';}
+  if(sheetReady&&SHEET_URL!=="https://script.google.com/macros/s/AKfycbxAL_kv9tlHwnL1iQfVmfgoFlMpl_CF8WtUE4eCjA21gyLKCi-GZnPgONBKUoqTy3Mt/exec"){
+    try{
+      await fetch(SHEET_URL,{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({name,date:dateStr,time:timeStr,type}),mode:"no-cors"});
+    }catch{}
+  }
+  const rec={name,date:dateStr,time:timeStr,type};
+  records.push(rec);
+  filteredRecords=records.slice();
+  showMsg("staffMsg","✔ "+name+" — Clocked "+type+" at "+timeStr,"ok");
+  renderStaffLog(); updateAdminStats();
+  clearPin();
+  btnIn.disabled=btnOut.disabled=false;
+  btnIn.innerHTML="Clock In"; btnOut.innerHTML="Clock Out";
+}
+
+// ── STAFF LOG ──
+function renderStaffLog(){
+  const el=document.getElementById("logList");
+  if(records.length===0){el.innerHTML='<div class="empty-log">No activity yet today</div>';return;}
+  el.innerHTML=[...records].reverse().slice(0,10).map(r=>`
+    <div class="log-item">
+      <div><div class="log-name">${r.name}</div><div class="log-meta">${r.date} · ${r.time}</div></div>
+      <span class="log-badge ${r.type==='IN'?'badge-in':'badge-out'}">${r.type}</span>
+    </div>`).join("");
+}
+
+// ── CSV DOWNLOAD (staff screen) ──
+function downloadCSV(){
+  if(records.length===0){showMsg("staffMsg","No records to download yet.","er");return;}
+  makeCSV(records,"murravale_attendance.csv");
+}
+
+function makeCSV(data,filename){
+  let csv="Name,Date,Time,Status\n";
+  data.forEach(r=>{csv+=`"${r.name}","${r.date}","${r.time}","${r.type}"\n`;});
+  const a=Object.assign(document.createElement("a"),{
+    href:URL.createObjectURL(new Blob([csv],{type:"text/csv"})),download:filename});
+  a.click();
+}
+
+// ── LOGO TAP → ADMIN ──
+document.getElementById("logoTap").addEventListener("click",function(){
+  tapCount++;
+  clearTimeout(tapTimer);
+  tapTimer=setTimeout(()=>{tapCount=0;},2000);
+  if(tapCount>=5){tapCount=0;openLogin();}
+});
+
+// ── LOGIN OVERLAY ──
+function openLogin(){
+  document.getElementById("loginOverlay").classList.add("show");
+  setTimeout(()=>document.getElementById("adminPwInput").focus(),100);
+}
+function closeLogin(){
+  document.getElementById("loginOverlay").classList.remove("show");
+  document.getElementById("adminPwInput").value="";
+  document.getElementById("loginMsg").className="msg";
+}
+function doLogin(){
+  const pw=document.getElementById("adminPwInput").value;
+  if(pw===ADMIN_PASSWORD){
+    closeLogin();
+    showScreen("adminScreen");
+    refreshAdminView();
+  } else {
+    showMsg("loginMsg","Incorrect password. Try again.","er");
+    document.getElementById("adminPwInput").value="";
+  }
+}
+function doLogout(){
+  showScreen("staffScreen");
+}
+
+// ── SCREEN SWITCH ──
+function showScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+// ── ADMIN TABS ──
+function switchTab(name){
+  activeTab=name;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
+  event.target.classList.add("active");
+  document.getElementById("tab-"+name).classList.add("active");
+  if(name==="activity") renderAdminLog(filteredRecords);
+  if(name==="staff") renderStaffAdmin();
+}
+
+// ── ADMIN: ACTIVITY ──
+function refreshAdminView(){
+  filteredRecords=records.slice();
+  renderAdminLog(filteredRecords);
+  updateAdminStats();
+  renderStaffAdmin();
+  // set today's date in filter
+  const today=new Date().toISOString().split("T")[0];
+  document.getElementById("filterDate").value=today;
+}
+
+function updateAdminStats(){
+  const src=filteredRecords.length>0?filteredRecords:records;
+  document.getElementById("statTotal").textContent=src.length;
+  document.getElementById("statIn").textContent=src.filter(r=>r.type==="IN").length;
+  document.getElementById("statOut").textContent=src.filter(r=>r.type==="OUT").length;
+}
+
+function filterActivity(){
+  const d=document.getElementById("filterDate").value;
+  if(!d){filteredRecords=records.slice();}
+  else{
+    // Convert yyyy-mm-dd to dd/mm/yyyy for comparison
+    const parts=d.split("-");
+    const auDate=`${parts[2]}/${parts[1]}/${parts[0]}`;
+    filteredRecords=records.filter(r=>r.date===auDate);
+  }
+  renderAdminLog(filteredRecords);
+  updateAdminStats();
+}
+
+function showAllActivity(){
+  filteredRecords=records.slice();
+  document.getElementById("filterDate").value="";
+  renderAdminLog(filteredRecords);
+  updateAdminStats();
+}
+
+function renderAdminLog(data){
+  const el=document.getElementById("adminLogList");
+  if(!data||data.length===0){el.innerHTML='<div class="empty-log">No records for this filter</div>';return;}
+  el.innerHTML=[...data].reverse().map(r=>`
+    <div class="admin-log-item">
+      <div><div class="al-name">${r.name}</div><div class="al-meta">${r.date} · ${r.time}</div></div>
+      <span class="al-badge ${r.type==='IN'?'badge-in':'badge-out'}">${r.type}</span>
+    </div>`).join("");
+}
+
+function downloadAdminCSV(){
+  const data=filteredRecords.length>0?filteredRecords:records;
+  if(data.length===0){alert("No records to download.");return;}
+  const d=document.getElementById("filterDate").value;
+  const fname=d?`murravale_attendance_${d}.csv`:"murravale_attendance_all.csv";
+  makeCSV(data,fname);
+}
+
+// ── ADMIN: STAFF MANAGEMENT ──
+function renderStaffAdmin(){
+  const el=document.getElementById("staffList");
+  const count=document.getElementById("staffCount");
+  const entries=Object.entries(STAFF);
+  count.textContent=entries.length;
+  if(entries.length===0){el.innerHTML='<div class="empty-log">No staff added yet</div>';return;}
+  el.innerHTML=entries.map(([pin,name])=>`
+    <div class="staff-item">
+      <div class="staff-info">
+        <div class="s-name">${name}</div>
+        <div class="s-pin">PIN: ${pin}</div>
+      </div>
+      <button class="btn-remove" onclick="removeStaff('${pin}')">Remove</button>
+    </div>`).join("");
+}
+
+function addStaff(){
+  const name=document.getElementById("newName").value.trim();
+  const newPin=document.getElementById("newPin").value.trim();
+  if(!name){showMsg("staffFormMsg","Please enter a name.","er");return;}
+  if(!newPin||newPin.length<3||newPin.length>6||isNaN(newPin)){showMsg("staffFormMsg","PIN must be 3–6 digits.","er");return;}
+  if(STAFF[newPin]){showMsg("staffFormMsg","That PIN is already assigned to "+STAFF[newPin]+".","er");return;}
+  STAFF[newPin]=name;
+  document.getElementById("newName").value="";
+  document.getElementById("newPin").value="";
+  showMsg("staffFormMsg","✔ "+name+" added with PIN "+newPin+".","ok");
+  renderStaffAdmin();
+}
+
+function removeStaff(p){
+  if(!confirm("Remove "+STAFF[p]+" (PIN: "+p+") from the system?")){return;}
+  delete STAFF[p];
+  renderStaffAdmin();
+}
+
+// ── ADMIN: CHANGE PASSWORD ──
+function changePassword(){
+  const cur=document.getElementById("pwCurrent").value;
+  const nw=document.getElementById("pwNew").value;
+  const con=document.getElementById("pwConfirm").value;
+  if(cur!==ADMIN_PASSWORD){showMsg("pwMsg","Current password is incorrect.","er");return;}
+  if(nw.length<4){showMsg("pwMsg","New password must be at least 4 characters.","er");return;}
+  if(nw!==con){showMsg("pwMsg","New passwords do not match.","er");return;}
+  ADMIN_PASSWORD=nw;
+  document.getElementById("pwCurrent").value="";
+  document.getElementById("pwNew").value="";
+  document.getElementById("pwConfirm").value="";
+  showMsg("pwMsg","✔ Password updated successfully.","ok");
+}
+</script>
+</body>
+</html>
